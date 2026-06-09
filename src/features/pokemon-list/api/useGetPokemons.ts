@@ -1,38 +1,52 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../../services/apiClient';
 
 // Types
-export interface PokemonListItem {
+export interface PokemonDetails {
+    id: number;
     name: string;
-    url: string;
+    height: number;
+    weight: number;
+    sprites: {
+        other: {
+            'official-artwork': {
+                front_default: string;
+            };
+        };
+    };
+    types: Array<{ type: { name: string } }>;
 }
 
-interface PokeApiResponse {
-    count: number;
-    next: string | null;
-    previous: string | null;
-    results: PokemonListItem[];
+export interface FormattedPokemonDetails extends PokemonDetails {
+    displayWeight: number;
+    displayHeight: number;
+    formattedName: string;
 }
+
+// Query Keys
+export const pokemonKeys = {
+    all: ['pokemon'] as const,
+    detail: (name: string) => [...pokemonKeys.all, name] as const,
+};
 
 // API Call
-const fetchPokemons = async ({ pageParam = 0 }): Promise<PokeApiResponse> => {
-    const { data } = await apiClient.get(`/pokemon?offset=${pageParam}&limit=20`);
+const fetchPokemonDetails = async (name: string): Promise<PokemonDetails> => {
+    const { data } = await apiClient.get(`/pokemon/${name}`);
     return data;
 };
 
 // Hook
-export const useGetPokemons = () => {
-    return useInfiniteQuery({
-        queryKey: ['pokemons'],
-        queryFn: fetchPokemons,
-        initialPageParam: 0,
-        getNextPageParam: (lastPage) => {
-            if (!lastPage.next) return undefined;
-
-            const url = new URL(lastPage.next);
-            const offset = url.searchParams.get('offset');
-
-            return offset ? Number(offset) : undefined;
-        },
+export const useGetPokemonDetails = (name: string) => {
+    return useQuery({
+        queryKey: pokemonKeys.detail(name),
+        queryFn: () => fetchPokemonDetails(name),
+        enabled: !!name,
+        staleTime: Infinity,
+        select: (data): FormattedPokemonDetails => ({
+            ...data,
+            displayWeight: data.weight / 10,
+            displayHeight: data.height / 10,
+            formattedName: data.name.charAt(0).toUpperCase() + data.name.slice(1),
+        }),
     });
 };
