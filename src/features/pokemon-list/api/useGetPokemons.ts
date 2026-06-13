@@ -1,52 +1,48 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { apiClient } from '../../../services/apiClient';
 
 // Types
-export interface PokemonDetails {
-    id: number;
+export interface PokemonListItem {
     name: string;
-    height: number;
-    weight: number;
-    sprites: {
-        other: {
-            'official-artwork': {
-                front_default: string;
-            };
-        };
-    };
-    types: Array<{ type: { name: string } }>;
+    url: string;
 }
 
-export interface FormattedPokemonDetails extends PokemonDetails {
-    displayWeight: number;
-    displayHeight: number;
-    formattedName: string;
+export interface FetchPokemonsResponse {
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: PokemonListItem[];
+}
+
+export interface UseGetPokemonsParams {
+    limit?: number;
 }
 
 // Query Keys
-export const pokemonKeys = {
-    all: ['pokemon'] as const,
-    detail: (name: string) => [...pokemonKeys.all, name] as const,
+export const pokemonListKeys = {
+    all: ['pokemons'] as const,
+    list: (limit: number) => [...pokemonListKeys.all, { limit }] as const,
 };
 
 // API Call
-const fetchPokemonDetails = async (name: string): Promise<PokemonDetails> => {
-    const { data } = await apiClient.get(`/pokemon/${name}`);
+const fetchPokemons = async (offset: number, limit: number): Promise<FetchPokemonsResponse> => {
+    const { data } = await apiClient.get(`/pokemon?offset=${offset}&limit=${limit}`);
     return data;
 };
 
 // Hook
-export const useGetPokemonDetails = (name: string) => {
-    return useQuery({
-        queryKey: pokemonKeys.detail(name),
-        queryFn: () => fetchPokemonDetails(name),
-        enabled: !!name,
-        staleTime: Infinity,
-        select: (data): FormattedPokemonDetails => ({
-            ...data,
-            displayWeight: data.weight / 10,
-            displayHeight: data.height / 10,
-            formattedName: data.name.charAt(0).toUpperCase() + data.name.slice(1),
-        }),
+export const useGetPokemons = ({ limit = 20 }: UseGetPokemonsParams = {}) => {
+    return useInfiniteQuery({
+        queryKey: pokemonListKeys.list(limit),
+        queryFn: ({ pageParam }) => fetchPokemons(pageParam as number, limit),
+        initialPageParam: 0,
+        getNextPageParam: (lastPage) => {
+            if (!lastPage.next) return undefined;
+
+            const url = new URL(lastPage.next);
+            const offset = url.searchParams.get('offset');
+
+            return offset ? Number(offset) : undefined;
+        },
     });
 };
