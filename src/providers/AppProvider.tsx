@@ -16,7 +16,9 @@ interface AppProviderProps {
     children: ReactNode;
 }
 
-// Component
+/**
+ * Root provider component wrapping the app with global contexts.
+ */
 export const AppProvider = ({ children }: AppProviderProps) => {
     return (
         <QueryClientProvider client={queryClient}>
