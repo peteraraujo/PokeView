@@ -7,7 +7,9 @@ interface FavoriteToggleIconProps {
     style?: ViewStyle;
 }
 
-// Component
+/**
+ * Interactive icon component to toggle a Pokémon's favorite status.
+ */
 export const FavoriteToggleIcon = ({ pokemonName, style }: FavoriteToggleIconProps) => {
     const isFavorite = useFavoritesStore((state) => state.favoriteIds.includes(pokemonName));
     const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
